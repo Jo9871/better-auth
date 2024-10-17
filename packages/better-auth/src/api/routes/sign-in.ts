@@ -1,12 +1,11 @@
 import { APIError } from "better-call";
 import { generateCodeVerifier } from "oslo/oauth2";
 import { z } from "zod";
-import { oAuthProviderList } from "../../social-providers";
-import { generateState } from "../../utils/state";
+import { generateState } from "../../oauth2/state";
 import { createAuthEndpoint } from "../call";
-import { getSessionFromCtx } from "./session";
 import { setSessionCookie } from "../../cookies";
 import { redirectURLMiddleware } from "../middlewares/redirect";
+import { socialProviderList } from "../../social-providers";
 
 export const signInOAuth = createAuthEndpoint(
 	"/sign-in/social",
@@ -30,7 +29,7 @@ export const signInOAuth = createAuthEndpoint(
 			/**
 			 * OAuth2 provider to use`
 			 */
-			provider: z.enum(oAuthProviderList),
+			provider: z.enum(socialProviderList),
 		}),
 		use: [redirectURLMiddleware],
 	},
@@ -40,7 +39,7 @@ export const signInOAuth = createAuthEndpoint(
 		);
 		if (!provider) {
 			c.context.logger.error(
-				"Provider not found. Make sure to add the provider to your auth config",
+				"Provider not found. Make sure to add the provider in your auth config",
 				{
 					provider: c.body.provider,
 				},
@@ -58,13 +57,12 @@ export const signInOAuth = createAuthEndpoint(
 			? c.body.callbackURL
 			: `${currentURL?.origin}${c.body.callbackURL || ""}`;
 
-		const state = generateState(
-			callbackURL || currentURL?.origin || c.context.baseURL,
-			c.query?.currentURL,
+		const state = await generateState(
+			callbackURL || currentURL?.origin || c.context.options.baseURL,
 		);
 		await c.setSignedCookie(
 			cookie.state.name,
-			state,
+			state.hash,
 			c.context.secret,
 			cookie.state.options,
 		);
@@ -76,13 +74,10 @@ export const signInOAuth = createAuthEndpoint(
 			cookie.pkCodeVerifier.options,
 		);
 		const url = await provider.createAuthorizationURL({
-			state: state,
+			state: state.raw,
 			codeVerifier,
+			redirectURI: `${c.context.baseURL}/callback/${provider.id}`,
 		});
-		url.searchParams.set(
-			"redirect_uri",
-			`${c.context.baseURL}/callback/${c.body.provider}`,
-		);
 		return c.json({
 			url: url.toString(),
 			state: state,
@@ -116,15 +111,6 @@ export const signInEmail = createAuthEndpoint(
 			throw new APIError("BAD_REQUEST", {
 				message: "Email and password is not enabled",
 			});
-		}
-		const currentSession = await getSessionFromCtx(ctx);
-		if (currentSession) {
-			/**
-			 * Delete the current session if it exists
-			 */
-			await ctx.context.internalAdapter.deleteSession(
-				currentSession.session.id,
-			);
 		}
 		const { email, password } = ctx.body;
 		const checkEmail = z.string().email().safeParse(email);
@@ -192,28 +178,3 @@ export const signInEmail = createAuthEndpoint(
 		});
 	},
 );
-
-const c = <
-	A extends {
-		additional: {
-			[key: string]: any;
-		};
-	},
-	T extends {
-		additional: A["additional"];
-		hooks: {
-			create: (user: A["additional"]) => any;
-		};
-	},
->(
-	o: T,
-) => {};
-
-c({
-	additional: {
-		name: "string",
-	},
-	hooks: {
-		create(user) {},
-	},
-});

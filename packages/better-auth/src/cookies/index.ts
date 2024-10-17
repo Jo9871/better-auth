@@ -2,13 +2,13 @@ import type { CookieOptions } from "better-call";
 import { TimeSpan } from "oslo";
 import type { BetterAuthOptions } from "../types/options";
 import type { GenericEndpointContext } from "../types/context";
-import { BetterAuthError } from "../error/better-auth-error";
+import { BetterAuthError } from "../error";
 
 export function getCookies(options: BetterAuthOptions) {
 	const secure =
 		options.advanced?.useSecureCookies !== undefined
 			? options.advanced?.useSecureCookies
-			: options.baseURL?.startsWith("https://") ||
+			: (options.baseURL ? options.baseURL.startsWith("https://") : false) ||
 				process.env.NODE_ENV === "production";
 	const secureCookiePrefix = secure ? "__Secure-" : "";
 	const cookiePrefix = "better-auth";

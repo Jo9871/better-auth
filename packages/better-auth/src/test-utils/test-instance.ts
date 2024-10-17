@@ -4,11 +4,12 @@ import { afterAll } from "vitest";
 import { betterAuth } from "../auth";
 import { createAuthClient } from "../client/vanilla";
 import type { BetterAuthOptions, ClientOptions, User } from "../types";
-import { getMigrations } from "../cli/utils/get-migration";
+import { getMigrations } from "../db/get-migration";
 import { parseSetCookieHeader } from "../cookies";
 import type { SuccessContext } from "@better-fetch/fetch";
 import { getAdapter } from "../db/utils";
 import Database from "better-sqlite3";
+import { getBaseURL } from "../utils/base-url";
 
 export async function getTestInstance<
 	O extends Partial<BetterAuthOptions>,
@@ -152,9 +153,10 @@ export async function getTestInstance<
 
 	const client = createAuthClient({
 		...(config?.clientOptions as C extends undefined ? {} : C),
-		baseURL:
-			options?.baseURL ||
-			"http://localhost:" + (config?.port || 3000) + "/api/auth",
+		baseURL: getBaseURL(
+			options?.baseURL || "http://localhost:" + (config?.port || 3000),
+			options?.basePath || "/api/auth",
+		),
 		fetchOptions: {
 			customFetchImpl,
 		},

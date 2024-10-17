@@ -40,16 +40,25 @@ This plugin offers two main methods to do a second factor verification:
         })
         ```
     </Step>
-        <Step>
-            ### Migrate your database:
-            Run the migration to add the required fields to the user table.
+      <Step>
+        ### Migrate the database
 
-            See the [schema-section](#schema) to see what fields this plugin requires.
+        Run the migration or generate the schema to add the necessary fields and tables to the database.
 
+        <Tabs items={["migrate", "generate"]}>
+            <Tab value="migrate">
             ```bash
-            npx better-auth migrate
+            npx @better-auth/cli migrate
             ```
-        </Step>
+            </Tab>
+            <Tab value="generate">
+            ```bash
+            npx @better-auth/cli generate
+            ```
+            </Tab>
+        </Tabs>
+        See the [Schema](#schema) section to add the fields manually.
+    </Step>
 
         <Step>
         ### Add the client Plugin
@@ -63,7 +72,7 @@ This plugin offers two main methods to do a second factor verification:
         const client = createAuthClient({
             plugins: [
                 twoFactorClient({
-                    twoFactorPage: "/two-factor" //redirect for two factor verification if enabled // [!code highlight]
+                    twoFactorPage: "/two-factor" //redirect for two factor verification is required // [!code highlight]
                 })
             ]
         })
@@ -109,7 +118,7 @@ await authClient.signIn.email({
 
 By default, if a user has 2FA enabled, they will be redirected to the `twoFactorPage`. If you want to manage the 2FA verification directly within your application instead, simply pass `redirect:false` to the client plugin and handle the verification in the callback.
 
-```ts title="sing-in.ts"
+```ts title="sign-in.ts"
 import { createAuthClient } from "better-auth/client";
 import { twoFactorClient } from "better-auth/client/plugins";
 

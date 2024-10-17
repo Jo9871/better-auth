@@ -8,7 +8,6 @@ import type {
 	Adapter,
 	BetterAuthOptions,
 	BetterAuthPlugin,
-	OAuthProvider,
 	SecondaryStorage,
 } from "./types";
 import { defu } from "defu";
@@ -20,8 +19,10 @@ import {
 	getCookies,
 } from "./cookies";
 import { createLogger, logger } from "./utils/logger";
-import { oAuthProviderList, oAuthProviders } from "./social-providers";
-import { BetterAuthError } from "./error/better-auth-error";
+import { socialProviderList, socialProviders } from "./social-providers";
+import { BetterAuthError } from "./error";
+import type { OAuthProvider } from "./oauth2";
+import { generateId } from "./utils";
 
 export const init = async (options: BetterAuthOptions) => {
 	const adapter = await getAdapter(options);
@@ -49,9 +50,6 @@ export const init = async (options: BetterAuthOptions) => {
 				"You are using the default secret. Please set `BETTER_AUTH_SECRET` or `AUTH_SECRET` in your environment variables or pass `secret` in your auth config.",
 			);
 		}
-		logger.warn(
-			"You are using the default secret. This is not recommended. Please set `BETTER_AUTH_SECRET` or `AUTH_SECRET` in your environment variables or pass `secret` in your auth config.",
-		);
 	}
 
 	options = {
@@ -64,7 +62,7 @@ export const init = async (options: BetterAuthOptions) => {
 	const cookies = getCookies(options);
 
 	const tables = getAuthTables(options);
-	const socialProviders = Object.keys(options.socialProviders || {})
+	const providers = Object.keys(options.socialProviders || {})
 		.map((key) => {
 			const value = options.socialProviders?.[key as "github"]!;
 			if (value.enabled === false) {
@@ -75,13 +73,13 @@ export const init = async (options: BetterAuthOptions) => {
 					`Social provider ${key} is missing clientId or clientSecret`,
 				);
 			}
-			return oAuthProviders[key as (typeof oAuthProviderList)[number]](value);
+			return socialProviders[key as (typeof socialProviderList)[number]](value);
 		})
 		.filter((x) => x !== null);
 
 	const ctx: AuthContext = {
 		appName: options.appName || "Better Auth",
-		socialProviders,
+		socialProviders: providers,
 		options,
 		tables,
 		trustedOrigins: getTrustedOrigins(options),
@@ -107,6 +105,7 @@ export const init = async (options: BetterAuthOptions) => {
 			disabled: options.logger?.disabled || false,
 		}),
 		db,
+		uuid: generateId,
 		secondaryStorage: options.secondaryStorage,
 		password: {
 			hash: options.emailAndPassword?.password?.hash || hashPassword,
@@ -150,6 +149,7 @@ export type AuthContext = {
 		updateAge: number;
 		expiresIn: number;
 	};
+	uuid: (size?: number) => string;
 	secondaryStorage: SecondaryStorage | undefined;
 	password: {
 		hash: (password: string) => Promise<string>;
