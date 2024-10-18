@@ -4,10 +4,12 @@ import { getTestInstance } from "../../test-utils/test-instance";
 describe("Email Verification", async () => {
 	const mockSendEmail = vi.fn();
 	let token: string;
-	const { auth, testUser, client } = await getTestInstance({
+	const { auth, testUser, client, signInWithTestUser } = await getTestInstance({
 		emailAndPassword: {
 			enabled: true,
-			async sendVerificationEmail(url, user, _token) {
+		},
+		emailVerification: {
+			async sendVerificationEmail(user, url, _token) {
 				token = _token;
 				mockSendEmail(user.email, url);
 			},

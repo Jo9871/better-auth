@@ -66,8 +66,8 @@ export const forgetPassword = createAuthEndpoint(
 		});
 		const url = `${ctx.context.baseURL}/reset-password/${verificationToken}?callbackURL=${redirectTo}`;
 		await ctx.context.options.emailAndPassword.sendResetPassword(
-			url,
 			user.user,
+			url,
 		);
 		return ctx.json({
 			status: true,
@@ -107,11 +107,11 @@ export const forgetPasswordCallback = createAuthEndpoint(
 export const resetPassword = createAuthEndpoint(
 	"/reset-password",
 	{
-		query: z
-			.object({
+		query: z.optional(
+			z.object({
 				token: z.string(),
-			})
-			.optional(),
+			}),
+		),
 		method: "POST",
 		body: z.object({
 			newPassword: z.string(),

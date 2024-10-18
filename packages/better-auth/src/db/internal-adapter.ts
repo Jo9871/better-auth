@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from "../types";
-import type { Adapter } from "../types/adapter";
+import type { Adapter, Where } from "../types/adapter";
 import { getDate } from "../utils/date";
 import { getAuthTables } from "./get-tables";
 import type { Account, Session, User, Verification } from "./schema";
@@ -19,13 +19,16 @@ export const createInternalAdapter = (
 	const tables = getAuthTables(options);
 	const { createWithHooks, updateWithHooks } = getWithHooks(adapter, ctx);
 	return {
-		createOAuthUser: async (user: User, account: Account) => {
+		createOAuthUser: async (user: User, account: Omit<Account, "userId">) => {
 			try {
 				const createdUser = await createWithHooks(user, "user");
 				const createdAccount = await createWithHooks(account, "account");
 				return {
 					user: createdUser,
-					account: createdAccount,
+					account: {
+						...createdAccount,
+						userId: createdUser.id,
+					},
 				};
 			} catch (e) {
 				console.log(e);
@@ -84,12 +87,14 @@ export const createInternalAdapter = (
 				field: string;
 				direction: "asc" | "desc";
 			},
+			where?: Where[],
 		) => {
 			const users = await adapter.findMany<User>({
 				model: tables.user.tableName,
 				limit,
 				offset,
 				sortBy,
+				where,
 			});
 			return users;
 		},
